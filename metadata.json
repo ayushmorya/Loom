@@ -1,6 +1,6 @@
 {
-  "name": "Reflective Journal",
-  "description": "A full-stack, user-authenticated reflective journaling partner utilizing Firebase Authentication, Cloud Firestore, and Google GenAI.",
+  "name": "Loom",
+  "description": "A cozy, reflective journaling sanctuary and future self time capsule with cute interactive dynamics and gentle ambiance.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

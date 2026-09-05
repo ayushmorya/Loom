@@ -7,9 +7,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Database,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { JournalEntry } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { FutureSelfCard } from './FutureSelfCard';
+import { sounds } from '../lib/soundEffects';
 
 interface SidebarProps {
   journals: JournalEntry[];
@@ -20,6 +24,9 @@ interface SidebarProps {
   onExportAll: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  onOpenFutureSelf?: () => void;
+  futureCapsulesCount?: number;
+  readyToOpenCount?: number;
 }
 
 const NATURAL_SENTIMENT_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
@@ -53,10 +60,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onExportAll,
   isCollapsed,
   onToggleCollapse,
+  onOpenFutureSelf,
+  futureCapsulesCount = 0,
+  readyToOpenCount = 0,
 }) => {
   const { user, logout } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSentiment, setSelectedSentiment] = useState('All');
+  const [soundActive, setSoundActive] = useState(sounds.isEnabled());
 
   // Filter journals by search term & sentiment
   const filteredJournals = useMemo(() => {
@@ -109,6 +120,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <Plus className="w-5 h-5" />
           </button>
+
+          {onOpenFutureSelf && (
+            <button
+              id="sidebar-future-self-collapsed-btn"
+              onClick={onOpenFutureSelf}
+              title="Message to My Future Self"
+              className="w-10 h-10 bg-gradient-to-tr from-[#5a5a40] via-[#6e775a] to-[#8ba888] hover:opacity-95 text-white rounded-2xl flex items-center justify-center shadow-md shadow-[#5a5a40]/15 transition-all active:scale-95 text-base"
+            >
+              🔮
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col items-center gap-3">
@@ -142,19 +164,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Top Header Brand */}
       <div className="p-6 pb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#5a5a40] flex items-center justify-center text-white font-serif italic text-lg shadow-xs">
-            R
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#687250] via-[#859870] to-[#b3c79e] flex items-center justify-center text-white font-serif italic text-lg shadow-sm">
+            🧶
           </div>
           <div>
             <span className="font-serif text-2xl font-semibold tracking-tight text-[#4a4a35]">
-              ReflectAI
+              Loom
+            </span>
+            <span className="block text-[10px] text-[#7a7a65] font-serif italic -mt-1">
+              Weaving Reflections &amp; Future Self
             </span>
           </div>
         </div>
 
         <button
           id="sidebar-collapse-btn"
-          onClick={onToggleCollapse}
+          onClick={() => {
+            sounds.bubblePop();
+            onToggleCollapse();
+          }}
           title="Collapse Sidebar"
           className="p-1.5 text-[#9a9a85] hover:text-[#4a4a35] rounded-xl hover:bg-white/60 transition-colors"
         >
@@ -163,17 +191,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* New Journal Button */}
-      <div className="px-6 pb-4">
+      <div className="px-6 pb-3">
         <button
           id="sidebar-new-journal-btn"
-          onClick={onCreateJournal}
+          onClick={() => {
+            sounds.bubblePop();
+            onCreateJournal();
+          }}
           type="button"
-          className="w-full py-3.5 px-5 bg-[#5a5a40] hover:bg-[#4a4a35] active:scale-[0.99] text-white rounded-2xl font-medium text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#5a5a40]/10 transition-all"
+          className="w-full py-3.5 px-5 bg-[#5a5a40] hover:bg-[#4a4a35] active:scale-[0.98] text-white rounded-2xl font-medium text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#5a5a40]/10 transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>+ New Reflection</span>
+          <span>New Reflection</span>
         </button>
       </div>
+
+      {/* Future Self Vault Card */}
+      {onOpenFutureSelf && (
+        <div className="px-6 pb-3">
+          <FutureSelfCard
+            variant="sidebar"
+            onOpen={onOpenFutureSelf}
+            sealedCount={futureCapsulesCount}
+            readyToOpenCount={readyToOpenCount}
+          />
+        </div>
+      )}
 
       {/* Search Input */}
       <div className="px-6 pb-3">
@@ -196,8 +239,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             key={sent}
             id={`filter-sentiment-${sent.toLowerCase()}`}
-            onClick={() => setSelectedSentiment(sent)}
-            className={`px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+            onClick={() => {
+              sounds.bubblePop();
+              setSelectedSentiment(sent);
+            }}
+            className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all cursor-pointer active:scale-95 ${
               selectedSentiment === sent
                 ? 'bg-[#5a5a40] text-white shadow-xs'
                 : 'bg-[#e8e4d9]/70 text-[#5a5a40] hover:bg-[#e8e4d9]'
@@ -220,7 +266,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {filteredJournals.length === 0 ? (
           <div className="text-center py-10 px-4 text-[#9a9a85] text-xs font-serif italic">
             {journals.length === 0 ? (
-              <p>No reflections yet. Click "+ New Reflection" above to begin your quiet thoughts.</p>
+              <p>No reflections yet. Click "New Reflection" above to begin your thoughts.</p>
             ) : (
               <p>No reflections match your search or filter.</p>
             )}
@@ -236,11 +282,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div
                 key={journal.id}
                 id={`journal-item-${journal.id}`}
-                onClick={() => onSelectJournal(journal.id)}
+                onClick={() => {
+                  sounds.bubblePop();
+                  onSelectJournal(journal.id);
+                }}
                 className={`group relative flex flex-col p-3.5 rounded-2xl cursor-pointer transition-all border ${
                   isActive
-                    ? 'bg-white/80 border-[#e5e1d8] shadow-xs'
-                    : 'bg-transparent hover:bg-white/40 border-transparent hover:border-[#e5e1d8]/60'
+                    ? 'bg-white/85 border-[#e5e1d8] shadow-sm scale-[1.01]'
+                    : 'bg-transparent hover:bg-white/50 border-transparent hover:border-[#e5e1d8]/60 active:scale-[0.99]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -337,15 +386,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
-          <button
-            id="sidebar-signout-btn"
-            type="button"
-            onClick={logout}
-            title="Sign out"
-            className="p-2 text-[#9a9a85] hover:text-[#8c524e] rounded-xl hover:bg-[#f4e6e4]/60 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              id="sidebar-sound-toggle-btn"
+              type="button"
+              onClick={() => {
+                const next = sounds.toggle();
+                setSoundActive(next);
+              }}
+              title={soundActive ? 'Mute serene sound effects' : 'Enable serene sound effects'}
+              className="p-2 text-[#7a7a65] hover:text-[#333322] rounded-xl hover:bg-white/60 transition-colors"
+            >
+              {soundActive ? <Volume2 className="w-4 h-4 text-[#5a5a40]" /> : <VolumeX className="w-4 h-4 text-[#9a9a85]" />}
+            </button>
+
+            <button
+              id="sidebar-signout-btn"
+              type="button"
+              onClick={logout}
+              title="Sign out"
+              className="p-2 text-[#9a9a85] hover:text-[#8c524e] rounded-xl hover:bg-[#f4e6e4]/60 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </aside>

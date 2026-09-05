@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { sounds } from '../lib/soundEffects';
 
 interface ZenBackgroundProps {
   variant?: 'full' | 'subtle' | 'landing';
@@ -72,6 +73,7 @@ export const ZenBackground: React.FC<ZenBackgroundProps> = ({
         y: e.clientY,
       };
 
+      sounds.bubblePop();
       setRipples(prev => [...prev.slice(-4), newRipple]);
 
       setTimeout(() => {

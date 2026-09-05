@@ -5,19 +5,26 @@ import { Sidebar } from './components/Sidebar';
 import { JournalChat } from './components/JournalChat';
 import { ExportModal } from './components/ExportModal';
 import { DeleteModal } from './components/DeleteModal';
-import { JournalEntry, JournalMessage } from './types';
+import { FutureSelfModal } from './components/FutureSelfModal';
+import { FutureSelfCard } from './components/FutureSelfCard';
+import { JournalEntry, JournalMessage, FutureCapsule } from './types';
 import {
   subscribeToUserJournals,
   subscribeToJournalMessages,
   createJournalEntry,
   deleteJournalEntry,
   exportAllUserData,
+  subscribeToUserFutureCapsules,
+  createFutureCapsule,
+  updateFutureCapsule,
+  deleteFutureCapsule,
 } from './lib/firestoreUtils';
 import { Loader2 } from 'lucide-react';
 import { ZenBackground } from './components/ZenBackground';
+import { sounds } from './lib/soundEffects';
 
 const MainAppContent: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshIdToken } = useAuth();
   const [demoUserMode, setDemoUserMode] = useState(false);
 
   // Effective user ID: actual logged-in user or demo vault
@@ -27,6 +34,10 @@ const MainAppContent: React.FC = () => {
   const [activeJournalId, setActiveJournalId] = useState<string | null>(null);
   const [messages, setMessages] = useState<JournalMessage[]>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Future Self Capsules state
+  const [futureCapsules, setFutureCapsules] = useState<FutureCapsule[]>([]);
+  const [futureSelfModalOpen, setFutureSelfModalOpen] = useState(false);
 
   // Modals state
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -85,6 +96,46 @@ const MainAppContent: React.FC = () => {
 
     return () => unsubscribe();
   }, [effectiveUserId, activeJournalId]);
+
+  // Subscribe to user's future capsules
+  useEffect(() => {
+    if (!effectiveUserId) {
+      setFutureCapsules([]);
+      return;
+    }
+
+    const unsubscribe = subscribeToUserFutureCapsules(
+      effectiveUserId,
+      caps => setFutureCapsules(caps),
+      err => console.error('Error fetching future capsules:', err)
+    );
+
+    return () => unsubscribe();
+  }, [effectiveUserId]);
+
+  // Future Self Handlers
+  const handleCreateFutureCapsule = async (capsule: Omit<FutureCapsule, 'id'>) => {
+    if (!effectiveUserId) throw new Error('No user session');
+    return await createFutureCapsule(effectiveUserId, capsule);
+  };
+
+  const handleUpdateFutureCapsule = async (id: string, updates: Partial<FutureCapsule>) => {
+    if (!effectiveUserId) return;
+    await updateFutureCapsule(effectiveUserId, id, updates);
+  };
+
+  const handleDeleteFutureCapsule = async (id: string) => {
+    if (!effectiveUserId) return;
+    await deleteFutureCapsule(effectiveUserId, id);
+  };
+
+  const nowTs = Date.now();
+  const readyToOpenCount = futureCapsules.filter(
+    c => c.status !== 'opened' && nowTs >= new Date(c.unlockDate).getTime()
+  ).length;
+  const sealedCount = futureCapsules.filter(
+    c => c.status === 'sealed' && nowTs < new Date(c.unlockDate).getTime()
+  ).length;
 
   // Handle creating a new journal
   const handleCreateJournal = async () => {
@@ -175,6 +226,9 @@ const MainAppContent: React.FC = () => {
         onExportAll={handleExportAll}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
+        onOpenFutureSelf={() => setFutureSelfModalOpen(true)}
+        futureCapsulesCount={futureCapsules.length}
+        readyToOpenCount={readyToOpenCount}
       />
 
       {/* Main Workspace Area */}
@@ -190,29 +244,63 @@ const MainAppContent: React.FC = () => {
               setJournalToDelete(activeJournal);
               setDeleteModalOpen(true);
             }}
+            onOpenFutureSelf={() => setFutureSelfModalOpen(true)}
           />
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#fdfcf8]/85 backdrop-blur-[2px]">
-            <div className="w-14 h-14 rounded-full bg-[#e8e4d9] text-[#5a5a40] flex items-center justify-center mb-4 font-serif italic text-2xl font-bold">
-              R
+          <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 text-center bg-[#fdfcf8]/85 backdrop-blur-[2px] overflow-y-auto">
+            <div className="max-w-xl w-full space-y-6">
+              <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-[#687250] to-[#b3c79e] text-white flex items-center justify-center mx-auto text-3xl shadow-sm">
+                🧶
+              </div>
+
+              <div className="space-y-2">
+                <h2 className="text-3xl font-serif text-[#3a3a2a] tracking-tight">
+                  Welcome to Loom
+                </h2>
+                <p className="text-sm text-[#7a7a65] max-w-md mx-auto leading-relaxed font-serif italic">
+                  A sanctuary for your thoughts today and letters to who you will become tomorrow.
+                </p>
+              </div>
+
+              {/* Prominent Future Self Entry Point Card */}
+              <div className="text-left pt-2">
+                <FutureSelfCard
+                  onOpen={() => setFutureSelfModalOpen(true)}
+                  sealedCount={sealedCount}
+                  readyToOpenCount={readyToOpenCount}
+                  variant="banner"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-center gap-4">
+                <button
+                  id="empty-state-new-journal-btn"
+                  type="button"
+                  onClick={() => {
+                    sounds.bubblePop();
+                    handleCreateJournal();
+                  }}
+                  className="px-6 py-3.5 rounded-2xl bg-[#5a5a40] hover:bg-[#4a4a35] text-white text-sm font-medium shadow-md shadow-[#5a5a40]/15 transition-transform active:scale-95 flex items-center gap-2 cursor-pointer"
+                >
+                  <span>Begin Reflection</span>
+                </button>
+              </div>
             </div>
-            <h2 className="text-2xl font-serif text-[#3a3a2a]">
-              No Reflection Selected
-            </h2>
-            <p className="text-sm text-[#7a7a65] max-w-sm mt-2 leading-relaxed font-serif italic">
-              Begin a fresh conversation or select an existing reflection from your vault on the left.
-            </p>
-            <button
-              id="empty-state-new-journal-btn"
-              type="button"
-              onClick={handleCreateJournal}
-              className="mt-6 px-6 py-3.5 rounded-2xl bg-[#5a5a40] hover:bg-[#4a4a35] text-white text-sm font-medium shadow-md shadow-[#5a5a40]/15 transition-transform active:scale-95"
-            >
-              + New Reflection
-            </button>
           </div>
         )}
       </main>
+
+      {/* Future Self Time Capsule Modal */}
+      <FutureSelfModal
+        isOpen={futureSelfModalOpen}
+        onClose={() => setFutureSelfModalOpen(false)}
+        userId={effectiveUserId || 'demo-user-vault'}
+        capsules={futureCapsules}
+        onCreateCapsule={handleCreateFutureCapsule}
+        onUpdateCapsule={handleUpdateFutureCapsule}
+        onDeleteCapsule={handleDeleteFutureCapsule}
+        getAuthToken={refreshIdToken}
+      />
 
       {/* Export Modal */}
       <ExportModal

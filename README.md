@@ -1,6 +1,6 @@
-# ReflectAI — Full-Stack AI Reflective Journaling Partner
+# Loom — Weaving Reflections & Future Self Time Capsule
 
-A private, user-authenticated reflective journaling application built with **React**, **TypeScript**, **Express**, **Firebase Authentication**, **Cloud Firestore**, and the **Google GenAI SDK (`gemini-3.6-flash`)**. Designed to provide empathetic, grounded Socratic self-reflection with zero cross-tenant data leakage, soothing "Natural Tones" aesthetics, and ambient zen motion design.
+A private, user-authenticated reflective journaling partner and time capsule vault built with **React 19**, **TypeScript**, **Express**, **Firebase Authentication**, **Cloud Firestore**, and the **Google GenAI SDK (`gemini-3.6-flash`)**. Featuring empathetic Socratic dialogue, "Natural Tones" parchment aesthetic, ambient Zen background motion, cute Web Audio synthesized bubble sounds, interactive mood vibe pickers, message emoji reactions, and the complete **"Future Self"** time capsule lifecycle: *Write → Reflect → Seal → Wait → Open → Compare → Grow*.
 
 ---
 
@@ -11,9 +11,11 @@ A private, user-authenticated reflective journaling application built with **Rea
 ```mermaid
 graph TD
     subgraph Client [Browser Client - React 19 / Vite]
-        UI[Zen Natural Tones UI]
+        UI[Zen Natural Tones UI & Bouncy Bubbles]
+        FutureSelfUI[Future Self Vault & Envelope Modal]
         AuthContext[Auth Context / Google & Guest Auth]
         FirestoreSDK[Firebase Client SDK]
+        SoundEngine[Web Audio Cute Synthesizer Engine]
         SSEClient[SSE Streaming Reader]
     end
 
@@ -21,6 +23,8 @@ graph TD
         AuthMiddleware[Bearer Token & Auth Middleware]
         ChatEndpoint["/api/chat (SSE Endpoint)"]
         InsightsEndpoint["/api/insights (JSON Endpoint)"]
+        FutureReflectEndpoint["/api/future-self/reflect (JSON)"]
+        FutureCompareEndpoint["/api/future-self/compare (JSON)"]
         GeminiHelper[Gemini Helper & Fallback Ladder]
     end
 
@@ -30,30 +34,78 @@ graph TD
         GeminiAPI[Google GenAI API - Gemini 3.6 Flash]
     end
 
-    UI -->|1. Sign in / Guest| AuthContext
+    UI -->|Sign in / Guest| AuthContext
     AuthContext -->|Verify credentials| FirebaseAuth
     FirebaseAuth -->|Return ID Token| AuthContext
 
-    UI -->|2. Real-time sync| FirestoreSDK
+    UI -->|Real-time sync| FirestoreSDK
+    FutureSelfUI -->|Real-time sync capsules| FirestoreSDK
     FirestoreSDK -->|Strict user-scoped rules| CloudFirestore
 
-    UI -->|3. Submit reflection with Bearer Token| SSEClient
-    SSEClient -->|POST /api/chat| ChatEndpoint
+    UI -->|Bubble send/receive/pop audio| SoundEngine
+    FutureSelfUI -->|Envelope & wax seal sounds| SoundEngine
+
+    UI -->|POST /api/chat| ChatEndpoint
     ChatEndpoint -->|Verify token| AuthMiddleware
-    AuthMiddleware -->|Validate signature / UID| FirebaseAuth
-
     ChatEndpoint -->|Invoke stream| GeminiHelper
-    GeminiHelper -->|Stream tokens| GeminiAPI
-    GeminiAPI -->|Chunks| GeminiHelper
-    GeminiHelper -->|SSE Events| ChatEndpoint
-    ChatEndpoint -->|Data chunks| SSEClient
-    SSEClient -->|Render & Persist| FirestoreSDK
 
-    UI -->|4. Trigger cognitive synthesis| InsightsEndpoint
-    InsightsEndpoint -->|Structured prompt| GeminiHelper
-    GeminiHelper -->|JSON schema extraction| GeminiAPI
-    GeminiAPI -->|Title, Sentiment, Tags| InsightsEndpoint
-    InsightsEndpoint -->|Update metadata| CloudFirestore
+    FutureSelfUI -->|POST /api/future-self/reflect| FutureReflectEndpoint
+    FutureSelfUI -->|POST /api/future-self/compare| FutureCompareEndpoint
+    FutureReflectEndpoint -->|AI reflection before seal| GeminiHelper
+    FutureCompareEndpoint -->|Then vs Now comparison| GeminiHelper
+
+    GeminiHelper -->|Ladder fallback| GeminiAPI
+```
+
+---
+
+### 1.2 Future Self Time Capsule Lifecycle Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Journal Author
+    participant Modal as Future Self Modal
+    participant Audio as Web Audio Sound Engine
+    participant API as Express API (/api/future-self/*)
+    participant Gemini as Gemini 3.6 Flash (with fallback ladder)
+    participant DB as Cloud Firestore (users/{uid}/future_capsules/*)
+
+    User->>Modal: 1. Write personal message ("Dear Future Me...")
+    opt Optional Pre-Seal Reflection
+        User->>Modal: Click "Reflect With AI"
+        Modal->>Audio: sounds.pop()
+        Modal->>API: POST /api/future-self/reflect (message)
+        API->>Gemini: Emotionally intelligent prompt (JSON schema)
+        Gemini-->>API: {reflection, mattersNow, questionForFuture}
+        API-->>Modal: Return empathetic reflection
+        Modal->>Audio: sounds.chime()
+    end
+
+    User->>Modal: 2. Select unlock duration (30d / 90d / 1yr / Custom)
+    User->>Modal: 3. Click "🔒 Seal My Message"
+    Modal->>Audio: sounds.foldSwoosh() -> sounds.sealStamp() -> sounds.sparkle()
+    Modal->>DB: Write encrypted/private capsule (status: 'sealed', unlockDate: ISO)
+    DB-->>Modal: Capsule vaulted
+    Modal-->>User: Visual envelope transition & celebration
+
+    Note over User,DB: Time passes (or user tests unlock)
+
+    User->>Modal: 4. Unlock Date arrives (or "Test Unlock Now")
+    Modal->>Audio: sounds.sealStamp() -> sounds.sparkle()
+    Modal->>DB: Update capsule status to 'opened'
+    Modal-->>User: Reveal original letter ("A message from [Date]...")
+
+    User->>Modal: 5. Write "Now" reflection ("How do you feel today?")
+    opt Then vs Now AI Comparison
+        User->>Modal: Click "✨ Compare Then & Now"
+        Modal->>API: POST /api/future-self/compare (thenText, nowText)
+        API->>Gemini: Comparative prompt (detect shifts, avoid exaggeration)
+        Gemini-->>API: {summary, biggestShift, growthTrajectory}
+        API-->>Modal: Return trajectory (THEN -> JOURNEY -> NOW)
+        Modal->>Audio: sounds.chime()
+        Modal->>DB: Persist comparison to capsule
+    end
 ```
 
 ---
@@ -201,7 +253,9 @@ graph LR
 │   ├── components/           # Modular Sub-Components
 │   │   ├── DeleteModal.tsx   # Irreversible deletion confirmation dialog
 │   │   ├── ExportModal.tsx   # Markdown / JSON data export modal with preview
-│   │   ├── JournalChat.tsx   # Socratic chat stream, inline title editing & insights
+│   │   ├── FutureSelfCard.tsx # Sidebar & inline Future Self capsule banner
+│   │   ├── FutureSelfModal.tsx # Full-lifecycle time capsule vault (write, seal, unlock, compare)
+│   │   ├── JournalChat.tsx   # Socratic chat stream, bouncy bubbles, mood bar & reactions
 │   │   ├── LandingPage.tsx   # Public hero page with Google & Guest authentication
 │   │   ├── Sidebar.tsx       # Searchable reflections list, tag filters & user menu
 │   │   └── ZenBackground.tsx # Interactive floating leaves, orbs, and click water ripples
@@ -211,7 +265,8 @@ graph LR
 │   │
 │   └── lib/                  # Utilities & Database Handlers
 │       ├── firebase.ts       # Firebase app, auth, and database initialization
-│       └── firestoreUtils.ts # User-scoped CRUD, real-time subscriptions & export logic
+│       ├── firestoreUtils.ts # User-scoped CRUD, real-time subscriptions & export logic
+│       └── soundEffects.ts   # Web Audio cute bubble synthesizer engine
 ```
 
 ---
@@ -297,6 +352,25 @@ The application will boot on `http://localhost:3000`.
 2. Confirm the deletion in the modal.
 3. Verify that the journal document and its subcollection messages are removed.
 
+#### Test Flow 6: Cute Sound Effects & Sound Toggle
+1. Click the sound toggle button in the header (speaker icon). Notice it toggles between enabled (with a green ping indicator) and muted.
+2. When typing a message and clicking **Send**, listen for the bouncy ascending water-drop chirp (`bubbleSend`).
+3. When the first packet of the AI reply arrives, listen for the two-tone melodic bubble pop (`bubbleReceive`).
+4. Tapping reflection starters, mood pills, and water ripples plays gentle bubble pops (`bubblePop`).
+
+#### Test Flow 7: Interactive Mood Picker & Message Reactions
+1. In the header bar under the title, click any mood pill (e.g. `🌸 Peaceful`, `🍵 Grounded`, `✨ Inspired`). Notice the sentiment badge and Firestore update in real-time.
+2. Hover over any chat bubble; click the emoji reaction drawer (`💖`, `🌱`, `✨`, `🫧`, `🍵`) to pin an animated reaction badge to the bubble with an audible pop.
+3. Hover over the partner message and click the **Copy** icon. Notice the button updates to `"Copied! 🫧"` and the text is copied to your clipboard.
+
+#### Test Flow 8: Future Self Time Capsule Vault
+1. Click **🔮 Future Self** in the header or the banner in the sidebar.
+2. Type a personal message into the letter canvas (*"Dear Future Me..."*).
+3. Click **Reflect With AI** to receive an empathetic pre-seal reflection and prompt for the future.
+4. Select an unlock duration (e.g., *30 Days*, *90 Days*, *1 Year*, or *Custom Date*).
+5. Click **🔒 Seal My Message** to seal the envelope with wax-stamp audio feedback and visual folding animation.
+6. To preview without waiting months, click **⚡ Test Unlock Now** to open the capsule, read your past words, write your current reflection, and run **✨ Compare Then & Now** to view your AI growth trajectory.
+
 ---
 
 ### 4.2 Testing Server API Endpoints via cURL
@@ -363,6 +437,43 @@ curl -X POST http://localhost:3000/api/insights \
 }
 ```
 
+#### 4. Future Self Pre-Seal Reflection (`/api/future-self/reflect`)
+```bash
+curl -X POST http://localhost:3000/api/future-self/reflect \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer demo-token" \
+  -d '{
+    "message": "I hope I finally took the leap to start painting and stopped worrying so much about perfection."
+  }'
+```
+**Expected Response**:
+```json
+{
+  "reflection": "A poignant desire to trade self-judgment for creative joy.",
+  "mattersNow": "You are craving raw expression and self-compassion.",
+  "questionForFuture": "Did you let the brush touch the canvas without needing it to be a masterpiece?"
+}
+```
+
+#### 5. Future Self Trajectory Comparison (`/api/future-self/compare`)
+```bash
+curl -X POST http://localhost:3000/api/future-self/compare \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer demo-token" \
+  -d '{
+    "thenText": "I was terrified of making mistakes at work and constantly overworking.",
+    "nowText": "I set firm boundaries at 6 PM today and felt zero guilt about leaving unfinished tasks for tomorrow."
+  }'
+```
+**Expected Response**:
+```json
+{
+  "summary": "A profound transition from anxiety-driven overworking to healthy, self-respecting boundaries.",
+  "biggestShift": "You shifted your metric of self-worth away from perpetual vigilance to intentional rest.",
+  "growthTrajectory": "Anxiety and perfectionism → Boundary setting → Sustainable peace"
+}
+```
+
 ---
 
 ### 4.3 Code Quality, Linting & Build Verification
@@ -396,7 +507,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      // All subcollections (journals, messages) inherit strict owner binding
+      // All subcollections (journals, messages, future_capsules) inherit strict owner binding
       match /{allSubcollections=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
@@ -450,3 +561,7 @@ gcloud run services update reflective-journal \
 | **TC-07** | **Interactive Ambiance** | Click empty background space; move mouse. | Calming water ripple expands and fades; background elements shift with parallax. |
 | **TC-08** | **Data Export** | Click Export in header; choose Markdown or JSON. | Formatted reflection content previewed; copy to clipboard and file download function properly. |
 | **TC-09** | **Reflection Deletion** | Click Delete in header or sidebar; confirm in modal. | Reflection document and subcollection messages permanently purged. |
+| **TC-10** | **Future Self Lifecycle** | Create letter, reflect with AI, seal with wax sound, and unlock to compare growth. | Capsule transitions through `draft → sealed → opened`, trajectory analyzed by Gemini. |
+| **TC-11** | **Synthesized Audio Engine** | Send message, receive stream, toggle header sound button. | Web Audio produces soothing water bubbles and chimes; mute cleanly silences output. |
+| **TC-12** | **Moods & Emoji Reactions** | Click mood pill in header; hover chat bubble and pick emoji. | Mood updates in Firestore and UI; emoji reactions attach to message bubble with auditory feedback. |
+| **TC-13** | **One-Click Message Copy** | Hover over partner reply and click the copy icon. | Content copied to clipboard with visual "Copied! 🫧" confirmation. |

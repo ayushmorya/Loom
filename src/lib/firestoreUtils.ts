@@ -13,7 +13,7 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { JournalEntry, JournalMessage, UserProfile } from '../types';
+import { JournalEntry, JournalMessage, UserProfile, FutureCapsule } from '../types';
 
 /**
  * Strict Undefined-Stripping (Zero-Crash Payload Hygiene)
@@ -248,3 +248,88 @@ export async function exportAllUserData(userId: string): Promise<Record<string, 
     journals: allJournals,
   };
 }
+
+/**
+ * Create a new Future Capsule
+ */
+export async function createFutureCapsule(
+  userId: string,
+  capsule: Omit<FutureCapsule, 'id'>
+): Promise<string> {
+  const capsulesCol = collection(db, 'users', userId, 'future_capsules');
+  const capsuleRef = doc(capsulesCol);
+  const payload = stripUndefined({
+    ...capsule,
+    id: capsuleRef.id,
+    userId,
+    createdAt: capsule.createdAt || new Date().toISOString(),
+    status: capsule.status || 'sealed',
+  });
+
+  await setDoc(capsuleRef, payload);
+  return capsuleRef.id;
+}
+
+/**
+ * Update an existing Future Capsule (e.g. unlocking, adding nowReflection, adding aiComparison)
+ */
+export async function updateFutureCapsule(
+  userId: string,
+  capsuleId: string,
+  updates: Partial<FutureCapsule>
+): Promise<void> {
+  const capsuleRef = doc(db, 'users', userId, 'future_capsules', capsuleId);
+  const payload = stripUndefined(updates);
+  await updateDoc(capsuleRef, payload);
+}
+
+/**
+ * Delete a Future Capsule
+ */
+export async function deleteFutureCapsule(
+  userId: string,
+  capsuleId: string
+): Promise<void> {
+  const capsuleRef = doc(db, 'users', userId, 'future_capsules', capsuleId);
+  await deleteDoc(capsuleRef);
+}
+
+/**
+ * Subscribe in real-time to all future capsules for a user
+ */
+export function subscribeToUserFutureCapsules(
+  userId: string,
+  onData: (capsules: FutureCapsule[]) => void,
+  onError: (err: Error) => void
+): Unsubscribe {
+  const capsulesCol = collection(db, 'users', userId, 'future_capsules');
+  const q = query(capsulesCol, orderBy('createdAt', 'desc'));
+
+  return onSnapshot(
+    q,
+    snapshot => {
+      const capsules: FutureCapsule[] = snapshot.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          userId: data.userId || userId,
+          title: data.title || 'Message to My Future Self',
+          message: data.message || '',
+          createdAt: data.createdAt || new Date().toISOString(),
+          unlockDate: data.unlockDate || new Date().toISOString(),
+          status: (data.status as 'sealed' | 'opened') || 'sealed',
+          openedAt: data.openedAt,
+          aiReflectionBeforeSeal: data.aiReflectionBeforeSeal,
+          nowReflection: data.nowReflection,
+          aiComparison: data.aiComparison,
+        };
+      });
+      onData(capsules);
+    },
+    error => {
+      console.error('Error subscribing to future capsules:', error);
+      onError(error);
+    }
+  );
+}
+

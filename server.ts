@@ -6,6 +6,8 @@ import { requireAuth, AuthenticatedRequest } from './server/authMiddleware';
 import {
   generateStreamWithFallback,
   generateInsightsWithFallback,
+  generateFutureReflectionWithFallback,
+  generateThenVsNowComparisonWithFallback,
   ChatMessageParam,
 } from './server/geminiHelper';
 
@@ -127,7 +129,66 @@ async function startServer() {
     }
   });
 
-  // 5. Vite Middleware Setup
+  // 5. Future Self: Reflect before sealing endpoint
+  app.post('/api/future-self/reflect', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const message = typeof body.message === 'string' ? body.message.trim() : '';
+
+    if (!message) {
+      res.status(400).json({ error: 'Bad Request: "message" string is required.' });
+      return;
+    }
+
+    try {
+      const reflection = await generateFutureReflectionWithFallback(message);
+      res.json(reflection);
+    } catch (err: unknown) {
+      console.error('[API /api/future-self/reflect] Error:', err);
+      res.status(500).json({
+        error: (err as Error).message || 'Failed to generate future reflection.',
+        fallback: {
+          reflection: 'Your letter reflects a moment of genuine presence and honest aspiration.',
+          mattersNow: ['Personal intention', 'Growth'],
+          questionForFuture: 'Did you find the clarity you were reaching toward back then?',
+        },
+      });
+    }
+  });
+
+  // 6. Future Self: Compare Then vs Now endpoint
+  app.post('/api/future-self/compare', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const thenText = typeof body.thenText === 'string' ? body.thenText.trim() : '';
+    const nowText = typeof body.nowText === 'string' ? body.nowText.trim() : '';
+
+    if (!thenText || !nowText) {
+      res.status(400).json({ error: 'Bad Request: both "thenText" and "nowText" are required.' });
+      return;
+    }
+
+    try {
+      const comparison = await generateThenVsNowComparisonWithFallback(thenText, nowText);
+      res.json(comparison);
+    } catch (err: unknown) {
+      console.error('[API /api/future-self/compare] Error:', err);
+      res.status(500).json({
+        error: (err as Error).message || 'Failed to compare reflections.',
+        fallback: {
+          summary: 'Your journey reflects continuous evolution and resilience across time.',
+          thenSummary: 'You documented your thoughts and hopes from that day.',
+          nowSummary: 'You returned with fresh perspective and deeper grounding.',
+          biggestShift: 'Seeking → Acceptance',
+          growthTrajectory: {
+            then: 'Searching',
+            journey: 'Time',
+            now: 'Reflective',
+          },
+        },
+      });
+    }
+  });
+
+  // 7. Vite Middleware Setup
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

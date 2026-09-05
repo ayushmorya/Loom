@@ -2,6 +2,7 @@ import React from 'react';
 import { Sparkles, ShieldCheck, Tag, ArrowRight, BrainCircuit, Lock, FileDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ZenBackground } from './ZenBackground';
+import { sounds } from '../lib/soundEffects';
 
 interface LandingPageProps {
   onExploreDemo?: () => void;
@@ -11,6 +12,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onExploreDemo }) => {
   const { loginWithGoogle, loginAsGuest, error, clearError } = useAuth();
 
   const handleDemoAccess = async () => {
+    sounds.bubblePop();
     try {
       await loginAsGuest();
     } catch {
@@ -26,12 +28,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onExploreDemo }) => {
       <header className="w-full border-b border-[#e5e1d8] bg-[#f5f2ed]/80 backdrop-blur-md sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-6 h-18 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-[#5a5a40] flex items-center justify-center text-white font-serif italic text-xl shadow-xs">
-              R
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#687250] to-[#b3c79e] flex items-center justify-center text-white text-lg shadow-sm">
+              🧶
             </div>
             <div>
               <span className="font-serif text-2xl font-semibold tracking-tight text-[#4a4a35]">
-                ReflectAI
+                Loom
               </span>
               <span className="ml-2 text-xs font-medium px-2.5 py-0.5 rounded-full bg-[#e8e4d9] text-[#5a5a40]">
                 Gemini 3.6 Flash
@@ -44,15 +46,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onExploreDemo }) => {
               id="landing-demo-top-btn"
               type="button"
               onClick={handleDemoAccess}
-              className="text-xs sm:text-sm font-medium text-[#7a7a65] hover:text-[#333322] px-3.5 py-2 rounded-xl transition-colors"
+              className="text-xs sm:text-sm font-medium text-[#7a7a65] hover:text-[#333322] px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
             >
               Continue as Guest
             </button>
             <button
               id="landing-signin-top-btn"
               type="button"
-              onClick={() => loginWithGoogle()}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-medium bg-[#5a5a40] hover:bg-[#4a4a35] text-white shadow-md shadow-[#5a5a40]/10 transition-all active:scale-[0.98]"
+              onClick={() => {
+                sounds.bubblePop();
+                loginWithGoogle();
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-medium bg-[#5a5a40] hover:bg-[#4a4a35] text-white shadow-md shadow-[#5a5a40]/10 transition-all active:scale-[0.98] cursor-pointer"
             >
               <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                 <path d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.439-3.389-7.439-7.574s3.344-7.574 7.439-7.574c2.33 0 3.891.989 4.785 1.849l3.254-3.138C18.189 1.186 15.479 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.189-1.989H12.24z" />
@@ -177,7 +182,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onExploreDemo }) => {
 
       {/* Footer */}
       <footer className="w-full border-t border-[#e5e1d8] py-6 text-center text-xs text-[#9a9a85]">
-        <p>ReflectAI · Built with Firebase Auth, Cloud Firestore & Google GenAI (gemini-2.5-flash)</p>
+        <p>Loom · Built with Firebase Auth, Cloud Firestore & Google GenAI (gemini-2.5-flash)</p>
       </footer>
     </div>
   );

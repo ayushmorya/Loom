@@ -42,3 +42,50 @@ export interface InsightsResult {
   tags: string[];
   summary: string;
 }
+
+export interface FutureCapsule {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  unlockDate: string;
+  status: 'sealed' | 'opened';
+  openedAt?: string;
+  aiReflectionBeforeSeal?: {
+    reflection: string;
+    mattersNow: string[];
+    questionForFuture: string;
+  };
+  nowReflection?: string;
+  aiComparison?: {
+    summary: string;
+    thenSummary: string;
+    nowSummary: string;
+    biggestShift: string;
+    growthTrajectory?: {
+      then: string;
+      journey: string;
+      now: string;
+    };
+  };
+}
+
+export interface FutureReflectResponse {
+  reflection: string;
+  mattersNow: string[];
+  questionForFuture: string;
+}
+
+export interface FutureCompareResponse {
+  summary: string;
+  thenSummary: string;
+  nowSummary: string;
+  biggestShift: string;
+  growthTrajectory?: {
+    then: string;
+    journey: string;
+    now: string;
+  };
+}
+
