@@ -3,10 +3,9 @@ import { InsightsResult, FutureReflectResponse, FutureCompareResponse } from '..
 
 // Resilient Model Fallback Ladder ordered by latency, capability, and availability
 const MODEL_FALLBACK_LADDER = [
-  'gemini-3.6-flash',
+  'gemini-3.8-flash',
   'gemini-3.1-flash-lite',
   'gemini-flash-latest',
-  'gemini-3.7-flash',
 ];
 
 let aiClient: GoogleGenAI | null = null;
@@ -17,13 +16,34 @@ export function getAI(): GoogleGenAI {
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY environment variable is required');
     }
-    aiClient = new GoogleGenAI({ apiKey });
+    aiClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
   }
   return aiClient;
 }
 
 export const JOURNAL_SYSTEM_INSTRUCTION =
   'You are an empathetic, insightful, and grounded reflective journaling partner. Your role is not to give generic life advice, but to help the user unpack their thoughts, spot recurring patterns, gently challenge cognitive blind spots, and synthesize clarity from complexity. Keep your responses concise, focused, and conversational. Avoid corporate jargon or excessive flattery.';
+
+function formatErrorSummary(err: unknown): string {
+  const msg = (err as Error)?.message || String(err || '');
+  if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
+    return 'Quota / rate limit reached (429)';
+  }
+  if (msg.includes('404') || msg.includes('NOT_FOUND')) {
+    return 'Model not found or deprecated (404)';
+  }
+  if (msg.includes('503') || msg.includes('UNAVAILABLE')) {
+    return 'Service temporarily unavailable (503)';
+  }
+  return msg.length > 100 ? msg.slice(0, 100) + '...' : msg;
+}
 
 function isRecoverableError(err: unknown): boolean {
   if (!err) return true;
@@ -84,9 +104,8 @@ export async function generateStreamWithFallback(
 
       return { modelUsed: model, fullText };
     } catch (err: unknown) {
-      const errMsg = (err as Error)?.message || String(err);
-      console.warn(`[Gemini] Model ${model} failed (${errMsg}). Trying next in fallback ladder.`);
-      lastError = err instanceof Error ? err : new Error(errMsg);
+      console.warn(`[Gemini] Model ${model} failed: ${formatErrorSummary(err)}. Trying next in fallback ladder.`);
+      lastError = err instanceof Error ? err : new Error(String(err));
 
       if (!isRecoverableError(err)) {
         throw lastError;
@@ -160,9 +179,8 @@ ${contextText.slice(0, 4000)}
         summary: parsed.summary || 'A moment of mindful reflection.',
       };
     } catch (err: unknown) {
-      const errMsg = (err as Error)?.message || String(err);
-      console.warn(`[Gemini] Insights generation failed with model ${model} (${errMsg}). Trying next.`);
-      lastError = err instanceof Error ? err : new Error(errMsg);
+      console.warn(`[Gemini] Insights generation failed with model ${model}: ${formatErrorSummary(err)}. Trying next.`);
+      lastError = err instanceof Error ? err : new Error(String(err));
 
       if (!isRecoverableError(err)) {
         throw lastError;
@@ -241,9 +259,8 @@ ${messageText.slice(0, 4000)}
         questionForFuture: parsed.questionForFuture || 'How does the path look from where you are standing now?',
       };
     } catch (err: unknown) {
-      const errMsg = (err as Error)?.message || String(err);
-      console.warn(`[Gemini] Future reflection failed with model ${model} (${errMsg}). Trying next.`);
-      lastError = err instanceof Error ? err : new Error(errMsg);
+      console.warn(`[Gemini] Future reflection failed with model ${model}: ${formatErrorSummary(err)}. Trying next.`);
+      lastError = err instanceof Error ? err : new Error(String(err));
 
       if (!isRecoverableError(err)) {
         throw lastError;
@@ -342,9 +359,8 @@ Identify meaningful differences, shifts in perspective, or continuity. Keep the 
         },
       };
     } catch (err: unknown) {
-      const errMsg = (err as Error)?.message || String(err);
-      console.warn(`[Gemini] Then vs Now comparison failed with model ${model} (${errMsg}). Trying next.`);
-      lastError = err instanceof Error ? err : new Error(errMsg);
+      console.warn(`[Gemini] Then vs Now comparison failed with model ${model}: ${formatErrorSummary(err)}. Trying next.`);
+      lastError = err instanceof Error ? err : new Error(String(err));
 
       if (!isRecoverableError(err)) {
         throw lastError;

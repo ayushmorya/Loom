@@ -358,6 +358,104 @@ class SoundManager {
   }
 
   /**
+   * Delicate wax seal release: subtle crisp wax crackle + soft warm resonance
+   */
+  public unsealWax() {
+    if (!this.enabled) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+
+      // 1. Crisp wax crackle snap (bandpass filtered noise transient)
+      const bufferSize = Math.floor(ctx.sampleRate * 0.08);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = 'bandpass';
+      noiseFilter.frequency.setValueAtTime(2200, now);
+      noiseFilter.Q.setValueAtTime(3, now);
+
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.12, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(ctx.destination);
+
+      noise.start(now);
+      noise.stop(now + 0.08);
+
+      // 2. Soft warm release resonance
+      const osc = ctx.createOscillator();
+      const oscGain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(280, now + 0.02);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.15);
+
+      oscGain.gain.setValueAtTime(0.1, now + 0.02);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+      osc.connect(oscGain);
+      oscGain.connect(ctx.destination);
+      osc.start(now + 0.02);
+      osc.stop(now + 0.23);
+    } catch {
+      // Ignore
+    }
+  }
+
+  /**
+   * Tactile parchment paper unfolding sound: layered gentle whisper rustles
+   */
+  public unfoldPaper() {
+    if (!this.enabled) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      [0, 0.12].forEach((offset, idx) => {
+        const bufferSize = Math.floor(ctx.sampleRate * 0.2);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(idx === 0 ? 800 : 1200, now + offset);
+        filter.frequency.exponentialRampToValueAtTime(idx === 0 ? 1400 : 600, now + offset + 0.18);
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.01, now + offset);
+        gain.gain.linearRampToValueAtTime(0.05, now + offset + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.19);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        noise.start(now + offset);
+        noise.stop(now + offset + 0.2);
+      });
+    } catch {
+      // Ignore
+    }
+  }
+
+  /**
    * Deep contemplative chord when entering future self or completing reflection
    */
   public contemplative() {

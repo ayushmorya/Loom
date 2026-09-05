@@ -126,7 +126,13 @@ const MainAppContent: React.FC = () => {
 
   const handleDeleteFutureCapsule = async (id: string) => {
     if (!effectiveUserId) return;
-    await deleteFutureCapsule(effectiveUserId, id);
+    // Optimistically update local capsule list immediately
+    setFutureCapsules(prev => prev.filter(c => c.id !== id));
+    try {
+      await deleteFutureCapsule(effectiveUserId, id);
+    } catch (err) {
+      console.error('Error deleting future capsule in Firestore:', err);
+    }
   };
 
   const nowTs = Date.now();

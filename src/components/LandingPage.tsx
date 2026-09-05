@@ -36,7 +36,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onExploreDemo }) => {
                 Loom
               </span>
               <span className="ml-2 text-xs font-medium px-2.5 py-0.5 rounded-full bg-[#e8e4d9] text-[#5a5a40]">
-                Gemini 3.6 Flash
+                Gemini 3.8 Flash
               </span>
             </div>
           </div>
@@ -134,7 +134,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onExploreDemo }) => {
               Socratic Reflection
             </h3>
             <p className="text-sm text-[#6a6a55] mt-2 leading-relaxed">
-              Powered by Gemini 3.6 Flash. Gently questions cognitive blind spots, uncovers repeated themes, and provides grounded synthesis.
+              Powered by Gemini 3.8 Flash. Gently questions cognitive blind spots, uncovers repeated themes, and provides grounded synthesis.
             </p>
           </div>
 
@@ -182,7 +182,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onExploreDemo }) => {
 
       {/* Footer */}
       <footer className="w-full border-t border-[#e5e1d8] py-6 text-center text-xs text-[#9a9a85]">
-        <p>Loom · Built with Firebase Auth, Cloud Firestore & Google GenAI (gemini-2.5-flash)</p>
+        <p>Loom · Built with Firebase Auth, Cloud Firestore & Google GenAI (gemini-3.8-flash)</p>
       </footer>
     </div>
   );

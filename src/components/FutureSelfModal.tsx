@@ -5,6 +5,7 @@ import {
   Calendar,
   Send,
   Trash2,
+  AlertTriangle,
   Check,
   Clock,
   ArrowRight,
@@ -18,9 +19,11 @@ import {
   Eye,
   AlertCircle,
   HelpCircle,
+  Copy,
 } from 'lucide-react';
 import { FutureCapsule, FutureReflectResponse, FutureCompareResponse } from '../types';
 import { sounds } from '../lib/soundEffects';
+import { FutureSelfUnsealRitual } from './FutureSelfUnsealRitual';
 
 interface FutureSelfModalProps {
   isOpen: boolean;
@@ -74,6 +77,11 @@ export const FutureSelfModal: React.FC<FutureSelfModalProps> = ({
   const [unlockAnimationStep, setUnlockAnimationStep] = useState<'locked' | 'breaking' | 'revealed'>('locked');
   const [nowReflectionInput, setNowReflectionInput] = useState('');
   const [isComparingAI, setIsComparingAI] = useState(false);
+  const [copiedLetter, setCopiedLetter] = useState(false);
+
+  // In-app Capsule Deletion Confirmation State (replaces blocked window.confirm)
+  const [capsuleToDelete, setCapsuleToDelete] = useState<FutureCapsule | null>(null);
+  const [isDeletingCapsule, setIsDeletingCapsule] = useState(false);
 
   // Current Time for dynamic countdowns
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -253,23 +261,60 @@ export const FutureSelfModal: React.FC<FutureSelfModalProps> = ({
 
     if (isUnlocked) {
       setUnlockAnimationStep('breaking');
-      sounds.sealStamp();
-
-      setTimeout(() => {
-        setUnlockAnimationStep('revealed');
-        sounds.sparkle();
-      }, 900);
 
       // If status wasn't opened in db, mark it opened
       if (capsule.status !== 'opened') {
-        await onUpdateCapsule(capsule.id, {
-          status: 'opened',
-          openedAt: new Date().toISOString(),
-        });
+        try {
+          await onUpdateCapsule(capsule.id, {
+            status: 'opened',
+            openedAt: new Date().toISOString(),
+          });
+        } catch (err) {
+          console.error('Error marking capsule opened:', err);
+        }
       }
     } else {
       setUnlockAnimationStep('locked');
       sounds.pop();
+    }
+  };
+
+  // Confirm and execute capsule deletion
+  const handleConfirmDeleteCapsule = async () => {
+    if (!capsuleToDelete) return;
+    setIsDeletingCapsule(true);
+    try {
+      const deletingId = capsuleToDelete.id;
+      await onDeleteCapsule(deletingId);
+      sounds.pop();
+      if (selectedCapsule?.id === deletingId) {
+        setSelectedCapsule(null);
+        setActiveTab('vault');
+      }
+    } catch (err) {
+      console.error('Error deleting future capsule:', err);
+    } finally {
+      setIsDeletingCapsule(false);
+      setCapsuleToDelete(null);
+    }
+  };
+
+  // Replay unseal opening ritual
+  const handleReplayRitual = () => {
+    sounds.bubblePop();
+    setUnlockAnimationStep('breaking');
+  };
+
+  // Copy letter content to clipboard
+  const handleCopyLetter = async () => {
+    if (!selectedCapsule) return;
+    try {
+      await navigator.clipboard.writeText(selectedCapsule.message);
+      sounds.bubblePop();
+      setCopiedLetter(true);
+      setTimeout(() => setCopiedLetter(false), 2000);
+    } catch {
+      // Fallback
     }
   };
 
@@ -953,14 +998,12 @@ export const FutureSelfModal: React.FC<FutureSelfModalProps> = ({
                               <button
                                 type="button"
                                 title="Delete this capsule"
-                                onClick={async e => {
+                                onClick={e => {
                                   e.stopPropagation();
                                   sounds.pop();
-                                  if (window.confirm('Delete this future self capsule permanently?')) {
-                                    await onDeleteCapsule(capsule.id);
-                                  }
+                                  setCapsuleToDelete(capsule);
                                 }}
-                                className="p-1.5 rounded-lg text-[#999283] hover:text-red-700 hover:bg-red-50 transition-colors"
+                                className="p-1.5 rounded-lg text-[#999283] hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -1054,30 +1097,65 @@ export const FutureSelfModal: React.FC<FutureSelfModalProps> = ({
                 </div>
               </div>
 
-              {/* Reveal Animation Banner */}
+              {/* Reveal Animation Ceremony */}
               {unlockAnimationStep === 'breaking' ? (
-                <div className="py-16 text-center space-y-4 animate-pulse">
-                  <div className="w-20 h-20 rounded-full bg-[#faf5ed] border-2 border-[#8ba888] flex items-center justify-center mx-auto text-4xl shadow-xl">
-                    ✨
-                  </div>
-                  <p className="font-serif text-lg text-[#4a4235]">Breaking seal and opening your letter...</p>
-                </div>
+                <FutureSelfUnsealRitual
+                  capsule={selectedCapsule}
+                  onComplete={() => setUnlockAnimationStep('revealed')}
+                  onSkip={() => setUnlockAnimationStep('revealed')}
+                />
               ) : (
                 <>
                   {/* UNLOCKED LETTER DISPLAY */}
-                  <div className="p-7 sm:p-9 rounded-3xl bg-white border border-[#ebdcd0] shadow-xl space-y-6 relative overflow-hidden">
+                  <div className="p-7 sm:p-9 rounded-3xl bg-white border border-[#ebdcd0] shadow-xl space-y-6 relative overflow-hidden transition-all animate-fadeIn">
                     {/* Atmospheric Watermark */}
                     <div className="absolute top-4 right-6 text-7xl font-serif text-[#f6f2ea] select-none pointer-events-none -z-0">
                       ✉️
                     </div>
 
-                    <div className="relative z-10 space-y-2">
-                      <span className="text-xs font-semibold uppercase tracking-widest text-[#8ba888]">
-                        A message from {new Date(selectedCapsule.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
-                      </span>
-                      <h3 className="font-serif text-2xl sm:text-3xl text-[#3a3528]">
-                        {selectedCapsule.title}
-                      </h3>
+                    <div className="relative z-10 flex items-start justify-between flex-wrap gap-3 border-b border-[#f3ebdf] pb-4">
+                      <div className="space-y-1">
+                        <span className="text-xs font-semibold uppercase tracking-widest text-[#8ba888] flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>A message from {new Date(selectedCapsule.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                        </span>
+                        <h3 className="font-serif text-2xl sm:text-3xl text-[#3a3528]">
+                          {selectedCapsule.title}
+                        </h3>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleCopyLetter}
+                          className="px-3 py-1.5 rounded-xl border border-[#e2d8c7] text-[#635b4c] hover:text-[#2d281f] hover:bg-[#faf7f0] text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>{copiedLetter ? 'Copied! 🫧' : 'Copy'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleReplayRitual}
+                          className="px-3 py-1.5 rounded-xl border border-[#8ba888]/40 text-[#435941] hover:bg-[#8ba888]/10 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title="Replay the physical unsealing and opening ceremony"
+                        >
+                          <span>✉️ Replay Opening Ceremony</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            sounds.pop();
+                            setCapsuleToDelete(selectedCapsule);
+                          }}
+                          className="px-3 py-1.5 rounded-xl border border-[#ebdcd0] text-[#9b3a32] hover:bg-[#fcf1f0] text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title="Delete this capsule permanently"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Original Message Display: Exact & Untampered */}
@@ -1244,6 +1322,72 @@ export const FutureSelfModal: React.FC<FutureSelfModalProps> = ({
             </div>
           )}
         </div>
+
+        {/* In-App Capsule Delete Confirmation Dialog */}
+        {capsuleToDelete && (
+          <div
+            id="delete-capsule-modal-backdrop"
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-[#2d281f]/45 backdrop-blur-xs p-4 animate-fadeIn"
+            onClick={() => !isDeletingCapsule && setCapsuleToDelete(null)}
+          >
+            <div
+              id="delete-capsule-modal-card"
+              className="bg-[#fdfcf9] rounded-3xl max-w-md w-full border border-[#ebdcd0] shadow-2xl p-6 sm:p-7 text-[#3a3528] relative overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-[#f7e8e6] text-[#9b3a32] rounded-2xl shrink-0 border border-[#f0cfcc]">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <h3 className="font-serif text-lg font-semibold text-[#322c22]">
+                    Delete Time Capsule?
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#6e6556] font-serif leading-relaxed">
+                    Are you sure you want to permanently delete <span className="font-semibold text-[#2b251b]">&ldquo;{capsuleToDelete.title}&rdquo;</span>?
+                  </p>
+                  <p className="text-xs text-[#8f8677] font-serif italic">
+                    {capsuleToDelete.status === 'sealed' ? '🔒 Sealed capsule' : '✨ Unlocked capsule'} written on {new Date(capsuleToDelete.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}. This letter cannot be recovered once removed.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 mt-6 pt-3 border-t border-[#f0e7dc]">
+                <button
+                  type="button"
+                  id="cancel-delete-capsule-btn"
+                  onClick={() => {
+                    sounds.pop();
+                    setCapsuleToDelete(null);
+                  }}
+                  disabled={isDeletingCapsule}
+                  className="px-4 py-2 text-xs font-serif font-medium text-[#6e6556] hover:bg-[#f0eae0] rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  id="confirm-delete-capsule-btn"
+                  onClick={handleConfirmDeleteCapsule}
+                  disabled={isDeletingCapsule}
+                  className="px-4 py-2 text-xs font-serif font-medium text-white bg-[#9b3a32] hover:bg-[#852f28] disabled:opacity-50 rounded-xl transition-all shadow-sm shadow-[#9b3a32]/20 cursor-pointer flex items-center gap-1.5"
+                >
+                  {isDeletingCapsule ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Permanently</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

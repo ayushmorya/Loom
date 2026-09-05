@@ -92,9 +92,16 @@ sequenceDiagram
     Note over User,DB: Time passes (or user tests unlock)
 
     User->>Modal: 4. Unlock Date arrives (or "Test Unlock Now")
-    Modal->>Audio: sounds.sealStamp() -> sounds.sparkle()
+    Modal->>Ritual: Initiate FutureSelfUnsealRitual (1.5-2.4s Physical Ceremony)
+    Ritual->>Audio: sounds.unsealWax() (wax crackle + resonant release)
+    Ritual->>User: Crimson wax seal breaks with golden spark burst
+    Ritual->>Audio: sounds.foldSwoosh() (3D top flap swing open)
+    Ritual->>User: Trifold letter slides naturally out of envelope pocket
+    Ritual->>Audio: sounds.unfoldPaper() + sounds.sparkle() (paper rustle & glow)
+    Ritual->>User: Letter unfolds flat; text settles line-by-line with soft blur reveal
+    Ritual->>Audio: sounds.chime() (arrival at stable state)
     Modal->>DB: Update capsule status to 'opened'
-    Modal-->>User: Reveal original letter ("A message from [Date]...")
+    Modal-->>User: Fully revealed letter with replay ceremony & copy tools
 
     User->>Modal: 5. Write "Now" reflection ("How do you feel today?")
     opt Then vs Now AI Comparison
@@ -255,6 +262,7 @@ graph LR
 │   │   ├── ExportModal.tsx   # Markdown / JSON data export modal with preview
 │   │   ├── FutureSelfCard.tsx # Sidebar & inline Future Self capsule banner
 │   │   ├── FutureSelfModal.tsx # Full-lifecycle time capsule vault (write, seal, unlock, compare)
+│   │   ├── FutureSelfUnsealRitual.tsx # Physical 3D envelope opening ceremony with audio-visual choreography
 │   │   ├── JournalChat.tsx   # Socratic chat stream, bouncy bubbles, mood bar & reactions
 │   │   ├── LandingPage.tsx   # Public hero page with Google & Guest authentication
 │   │   ├── Sidebar.tsx       # Searchable reflections list, tag filters & user menu
