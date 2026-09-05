@@ -1,0 +1,6 @@
+{
+  "name": "Reflective Journal",
+  "description": "A full-stack, user-authenticated reflective journaling partner utilizing Firebase Authentication, Cloud Firestore, and Google GenAI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
